@@ -7,6 +7,8 @@ public class Main {
     private static final int BOARD_START_WIDTH = 800;
     private static final int BAR_HEIGHT = 50;
 
+    private static final Color BG_COLOR = new Color(55, 55, 55);
+
     private static CapturedPiecesBar blackPieceBar;
     private static CapturedPiecesBar whitePieceBar;
     private static Board board;
@@ -18,6 +20,7 @@ public class Main {
         mainFrame.addComponentListener(new ResizeListener());
 
         JPanel columnPanel = createColumnPanel();
+        columnPanel.setBackground(BG_COLOR);
 
         mainFrame.add(columnPanel);
         mainFrame.pack();
@@ -34,17 +37,20 @@ public class Main {
         board = new Board(BOARD_START_WIDTH, blackPieceBar, whitePieceBar);
         board.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        columnPanel.add(Box.createVerticalGlue());
         columnPanel.add(blackPieceBar);
         columnPanel.add(board);
         columnPanel.add(whitePieceBar);
+        columnPanel.add(Box.createVerticalGlue());
         return columnPanel;
     }
 
     static class ResizeListener implements ComponentListener {
         @Override
         public void componentResized(ComponentEvent componentEvent) {
-            Dimension newSize = componentEvent.getComponent().getSize();
-            int newBoardSize = Math.min(newSize.width, newSize.height-3*BAR_HEIGHT);
+            JFrame frame = (JFrame) componentEvent.getComponent();
+            Dimension newSize = frame.getContentPane().getSize();
+            int newBoardSize = Math.min(newSize.width, newSize.height-2*BAR_HEIGHT);
             board.resize(newBoardSize);
             blackPieceBar.resize(newSize.width, BAR_HEIGHT);
             whitePieceBar.resize(newSize.width, BAR_HEIGHT);

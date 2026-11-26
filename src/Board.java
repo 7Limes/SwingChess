@@ -5,8 +5,8 @@ import java.awt.event.MouseListener;
 import java.util.Set;
 
 public class Board extends JPanel {
-    private static final Color BG_COLOR_1 = new Color(225, 225, 225);
-    private static final Color BG_COLOR_2 = new Color(200, 200, 200);
+    private static final Color BOARD_COLOR_1 = new Color(225, 225, 225);
+    private static final Color BOARD_COLOR_2 = new Color(200, 200, 200);
     private static final Color CAN_MOVE_COLOR = new Color(150, 225, 255, 128);
 
     private int size, cellSize;
@@ -19,8 +19,6 @@ public class Board extends JPanel {
 
     public Board(int size, CapturedPiecesBar whitePieceBar, CapturedPiecesBar blackPieceBar) {
         resize(size);
-        this.size = size;
-        this.cellSize = size / 8;
 
         this.whitePieceBar = whitePieceBar;
         this.blackPieceBar = blackPieceBar;
@@ -61,6 +59,8 @@ public class Board extends JPanel {
     }
 
     public void resize(int newSize) {
+        // Snap to a multiple of 8 so the cells exactly fill the panel
+        newSize -= newSize % 8;
         Dimension newDim = new Dimension(newSize, newSize);
         this.setPreferredSize(newDim);
         this.setMaximumSize(newDim);
@@ -93,17 +93,16 @@ public class Board extends JPanel {
         }
 
         drawPieces(g2);
-
     }
 
     private void drawCheckerboard(Graphics2D g2) {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 if ((i+j) % 2 == 0) {
-                    g2.setColor(BG_COLOR_1);
+                    g2.setColor(BOARD_COLOR_1);
                 }
                 else {
-                    g2.setColor(BG_COLOR_2);
+                    g2.setColor(BOARD_COLOR_2);
                 }
 
                 g2.fillRect(
