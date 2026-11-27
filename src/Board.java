@@ -31,6 +31,7 @@ public class Board extends JPanel {
     private long animStartTime = 0;
     private Position animStartPos, animEndPos;
     private Piece animPiece;  // The piece being animated
+    private Piece animCapturedPiece;  // Piece being captured, shown until the moving piece arrives
 
     public Board(int size, CapturedPiecesBar whitePieceBar, CapturedPiecesBar blackPieceBar) {
         resize(size);
@@ -161,6 +162,10 @@ public class Board extends JPanel {
 
         // Draw the moving piece last so it slides over the other pieces
         if (isAnimating) {
+            // Keep the captured piece on its square until the moving piece arrives
+            if (animCapturedPiece != null) {
+                animCapturedPiece.draw(g2, animEndPos.x * cellSize, animEndPos.y * cellSize, cellSize, this);
+            }
             drawAnimatedPiece(g2);
         }
     }
@@ -189,6 +194,7 @@ public class Board extends JPanel {
         animTimer.stop();
         isAnimating = false;
         animPiece = null;
+        animCapturedPiece = null;
     }
 
     /** Returns true if any piece of `byFaction` attacks the given position. */
@@ -300,6 +306,7 @@ public class Board extends JPanel {
 
         // Setup animation
         animPiece = selectedPiece;
+        animCapturedPiece = capturedPiece;
         animStartPos = selectedPiecePos;
         animEndPos = new Position(x, y);
         animStartTime = System.nanoTime();
