@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.HashSet;
 import java.util.Set;
 
 public class Board extends JPanel {
@@ -16,6 +17,8 @@ public class Board extends JPanel {
 
     private Piece selectedPiece = null;
     private Position selectedPiecePos = null;
+
+    private Piece.Faction turn = Piece.Faction.WHITE;
 
     public Board(int size, CapturedPiecesBar whitePieceBar, CapturedPiecesBar blackPieceBar) {
         resize(size);
@@ -42,6 +45,8 @@ public class Board extends JPanel {
             cells[1][col] = new Pawn(Piece.Faction.BLACK);
             cells[6][col] = new Pawn(Piece.Faction.WHITE);
         }
+
+        turn = Piece.Faction.WHITE;
     }
 
     public boolean isOutOfBounds(int x, int y) {
@@ -132,8 +137,69 @@ public class Board extends JPanel {
         }
     }
 
+    /** Returns true if any piece of `byFaction` attacks the given position. */
+    public boolean isSquareAttacked(Position pos, Piece.Faction byFaction) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Piece piece = cells[i][j];
+                if (piece != null && piece.faction == byFaction
+                        && piece.getAttackedPositions(this, j, i).contains(pos)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Returns the position of the given faction's king, or null if it isn't on the board. */
+    private Position findKing(Piece.Faction faction) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Piece piece = cells[i][j];
+                if (piece instanceof King && piece.faction == faction) {
+                    return new Position(j, i);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Returns true if the given faction's king is currently attacked. */
+    public boolean isInCheck(Piece.Faction faction) {
+        Position kingPos = findKing(faction);
+        if (kingPos == null) return false;
+        Piece.Faction enemy = faction == Piece.Faction.WHITE ? Piece.Faction.BLACK : Piece.Faction.WHITE;
+        return isSquareAttacked(kingPos, enemy);
+    }
+
+    /**
+     * Returns the moves for the piece at (x, y) that don't leave its own king in check.
+     * Each candidate move is played on the board, tested, then undone.
+     */
+    public Set<Position> getLegalMoves(int x, int y) {
+        Piece piece = getCell(x, y);
+        if (piece == null) return Set.of();
+
+        Set<Position> legalMoves = new HashSet<>();
+        for (Position move : piece.getPossibleMoves(this, x, y)) {
+            // Simulate (onMove() is deliberately not called, so pawns keep their first-move state)
+            Piece captured = cells[move.y][move.x];
+            cells[move.y][move.x] = piece;
+            cells[y][x] = null;
+
+            if (!isInCheck(piece.faction)) {
+                legalMoves.add(move);
+            }
+
+            // Undo
+            cells[y][x] = piece;
+            cells[move.y][move.x] = captured;
+        }
+        return legalMoves;
+    }
+
     private void drawPossibleMoves(Graphics2D g2) {
-        Set<Position> movePositions = selectedPiece.getPossibleMoves(this, selectedPiecePos.x, selectedPiecePos.y);
+        Set<Position> movePositions = getLegalMoves(selectedPiecePos.x, selectedPiecePos.y);
         g2.setColor(CAN_MOVE_COLOR);
 
         for (Position pos : movePositions) {
@@ -147,13 +213,18 @@ public class Board extends JPanel {
             return false;
         }
 
-        Set<Position> movePositions = selectedPiece.getPossibleMoves(Board.this, selectedPiecePos.x, selectedPiecePos.y);
-        for (Position pos : movePositions) {
-            if (pos.x == x && pos.y == y) {
-                return true;
-            }
+        return getLegalMoves(selectedPiecePos.x, selectedPiecePos.y).contains(new Position(x, y));
+    }
+
+    /** Tries to select a piece at the given position. */
+    private void trySelectPiece(int x, int y) {
+        Piece newSelectedPiece = getCell(x, y);
+        if (newSelectedPiece != null && newSelectedPiece.faction == turn) {
+            IO.println("Selected piece at " + x + ", " + y);
+            selectedPiece = newSelectedPiece;
+            selectedPiecePos = new Position(x, y);
+            repaint();
         }
-        return false;
     }
 
     /** Tries to move the currently selected piece to the given position.
@@ -177,6 +248,9 @@ public class Board extends JPanel {
         selectedPiecePos = null;
         repaint();
 
+        // Swap turns
+        turn = turn == Piece.Faction.WHITE ? Piece.Faction.BLACK : Piece.Faction.WHITE;
+
         return true;
     }
 
@@ -184,30 +258,21 @@ public class Board extends JPanel {
 
         @Override
         public void mouseClicked(MouseEvent mouseEvent) {
-            int cellX = mouseEvent.getX() / cellSize;
-            int cellY = mouseEvent.getY() / cellSize;
 
-            if (tryMakeMove(cellX, cellY)) {
-                return;
-            }
-
-            Piece newSelectedPiece = getCell(cellX, cellY);
-            if (newSelectedPiece != null) {
-                IO.println("Selected piece at " + cellX + ", " + cellY);
-                selectedPiece = newSelectedPiece;
-                selectedPiecePos = new Position(cellX, cellY);
-                repaint();
-            }
         }
 
         @Override
         public void mousePressed(MouseEvent mouseEvent) {
-
+            int cellX = mouseEvent.getX() / cellSize;
+            int cellY = mouseEvent.getY() / cellSize;
+            trySelectPiece(cellX, cellY);
         }
 
         @Override
         public void mouseReleased(MouseEvent mouseEvent) {
-
+            int cellX = mouseEvent.getX() / cellSize;
+            int cellY = mouseEvent.getY() / cellSize;
+            tryMakeMove(cellX, cellY);
         }
 
         @Override

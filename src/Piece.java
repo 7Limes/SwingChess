@@ -24,7 +24,7 @@ public abstract class Piece {
      * @param px       pixel x of the top-left corner to draw at
      * @param py       pixel y of the top-left corner to draw at
      * @param size     width/height to draw in pixels
-     * @param observer component being painted on (e.g. the Board); may be null
+     * @param observer component being painted on, may be null
      *                 since our images are fully loaded by ImageIO.read
      */
     public void draw(Graphics2D g2, int px, int py, int size, ImageObserver observer) {
@@ -33,6 +33,15 @@ public abstract class Piece {
     }
 
     public abstract Set<Position> getPossibleMoves(Board board, int x, int y);
+
+    /**
+     * Returns the squares this piece attacks (could capture on if an enemy were there).
+     * For most pieces this is the same as their possible moves; pieces where
+     * the two differ (King, Pawn) override this.
+     */
+    public Set<Position> getAttackedPositions(Board board, int x, int y) {
+        return getPossibleMoves(board, x, y);
+    }
 
     public void onMove() {};
 

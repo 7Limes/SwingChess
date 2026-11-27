@@ -44,6 +44,18 @@ public class Pawn extends Piece {
     }
 
     @Override
+    public Set<Position> getAttackedPositions(Board board, int x, int y) {
+        // Pawns attack diagonally forward, whether or not anything is there
+        Set<Position> positions = new HashSet<>();
+        int yDir = faction == Faction.WHITE ? -1 : 1;
+
+        if (!board.isOutOfBounds(x-1, y+yDir)) positions.add(new Position(x-1, y+yDir));
+        if (!board.isOutOfBounds(x+1, y+yDir)) positions.add(new Position(x+1, y+yDir));
+
+        return positions;
+    }
+
+    @Override
     public void onMove() {
         isFirstMove = false;
     }
