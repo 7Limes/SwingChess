@@ -13,6 +13,9 @@ public class Main {
     private static CapturedPiecesBar whitePieceBar;
     private static Board board;
 
+    private static JLabel statusLabel;
+    private static JButton restartButton;
+
     public static void main(String[] args) {
         JFrame mainFrame = new JFrame("Chess");
         mainFrame.setSize(BOARD_START_WIDTH, BOARD_START_WIDTH+BAR_HEIGHT*2);
@@ -32,6 +35,9 @@ public class Main {
         JPanel columnPanel = new JPanel();
         columnPanel.setLayout(new BoxLayout(columnPanel, BoxLayout.Y_AXIS));
 
+        JPanel controlsPanel = createControlsPanel();
+        columnPanel.add(controlsPanel);
+
         blackPieceBar = new CapturedPiecesBar(Piece.Faction.WHITE, BOARD_START_WIDTH, BAR_HEIGHT, true);
         whitePieceBar = new CapturedPiecesBar(Piece.Faction.BLACK, BOARD_START_WIDTH, BAR_HEIGHT, false);
         board = new Board(BOARD_START_WIDTH, blackPieceBar, whitePieceBar);
@@ -43,6 +49,26 @@ public class Main {
         columnPanel.add(whitePieceBar);
         columnPanel.add(Box.createVerticalGlue());
         return columnPanel;
+    }
+
+    private static JPanel createControlsPanel() {
+        JPanel controlsPanel = new JPanel(new BorderLayout());
+        controlsPanel.setBackground(BG_COLOR);
+        controlsPanel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+        statusLabel = new JLabel("White to Move");
+        statusLabel.setForeground(Color.WHITE);
+        statusLabel.setFont(statusLabel.getFont().deriveFont(18f));
+        controlsPanel.add(statusLabel, BorderLayout.WEST);
+
+        restartButton = new JButton("Restart");
+        restartButton.setFont(restartButton.getFont().deriveFont(18f));
+        controlsPanel.add(restartButton, BorderLayout.EAST);
+
+        // Stop the vertical BoxLayout in columnPanel from stretching this panel taller
+        controlsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, controlsPanel.getPreferredSize().height));
+
+        return controlsPanel;
     }
 
     static class ResizeListener implements ComponentListener {
