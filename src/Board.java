@@ -6,6 +6,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class Board extends JPanel {
     private static final Color BOARD_COLOR_1 = new Color(225, 225, 225);
@@ -14,7 +15,9 @@ public class Board extends JPanel {
 
     private static final double PIECE_ANIM_DURATION = 0.25;
 
-    private Runnable onMoveEvent;  // Event that external sources can hook into
+    // Events that external sources can hook into
+    private Runnable onMoveEvent;
+    private Consumer<Piece.Faction> onWinEvent;
 
     private int size, cellSize;
     private final CapturedPiecesBar whitePieceBar, blackPieceBar;
@@ -25,6 +28,7 @@ public class Board extends JPanel {
     private Position selectedPiecePos = null;
 
     private Piece.Faction turn = Piece.Faction.WHITE;
+    private boolean isGameOver = false;
 
     private final Timer animTimer = new Timer(16, new PieceMoveAnimator());
     private boolean isAnimating = false;
@@ -62,6 +66,9 @@ public class Board extends JPanel {
         }
 
         turn = Piece.Faction.WHITE;
+        isGameOver = false;
+        selectedPiece = null;
+        selectedPiecePos = null;
 
         repaint();
     }
@@ -100,6 +107,10 @@ public class Board extends JPanel {
 
     public void setOnMoveEvent(Runnable func) {
         this.onMoveEvent = func;
+    }
+
+    public void setOnWinEvent(Consumer<Piece.Faction> func) {
+        this.onWinEvent = func;
     }
 
     /** Places rook, knight, bishop, queen, king, bishop, knight, rook across a row. */
@@ -242,7 +253,6 @@ public class Board extends JPanel {
 
         Set<Position> legalMoves = new HashSet<>();
         for (Position move : piece.getPossibleMoves(this, x, y)) {
-            // Simulate (onMove() is deliberately not called, so pawns keep their first-move state)
             Piece captured = cells[move.y][move.x];
             cells[move.y][move.x] = piece;
             cells[y][x] = null;
@@ -256,6 +266,35 @@ public class Board extends JPanel {
             cells[move.y][move.x] = captured;
         }
         return legalMoves;
+    }
+
+    /** Returns true if the given faction has at least one legal move. */
+    public boolean factionHasAnyLegalMoves(Piece.Faction faction) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Piece piece = cells[i][j];
+                if (piece != null && piece.faction == faction && !getLegalMoves(j, i).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether the faction to move has been checkmated or stalemated.
+     * Calls onWinEvent with the winning faction, or null for a stalemate.
+     */
+    private void tryEndGame() {
+        if (factionHasAnyLegalMoves(turn)) return;
+
+        isGameOver = true;
+        Piece.Faction winner = null;
+        if (isInCheck(turn)) {
+            winner = turn == Piece.Faction.WHITE ? Piece.Faction.BLACK : Piece.Faction.WHITE;
+        }
+
+        if (onWinEvent != null) onWinEvent.accept(winner);
     }
 
     private void drawPossibleMoves(Graphics2D g2) {
@@ -279,7 +318,7 @@ public class Board extends JPanel {
     /** Tries to select a piece at the given position. */
     private void trySelectPiece(int x, int y) {
         Piece newSelectedPiece = getCell(x, y);
-        if (newSelectedPiece != null && newSelectedPiece.faction == turn) {
+        if (!isGameOver && newSelectedPiece != null && newSelectedPiece.faction == turn) {
             IO.println("Selected piece at " + x + ", " + y);
             selectedPiece = newSelectedPiece;
             selectedPiecePos = new Position(x, y);
@@ -322,6 +361,8 @@ public class Board extends JPanel {
 
         // Run external event
         if (onMoveEvent != null) onMoveEvent.run();
+
+        tryEndGame();
     }
 
     class MouseEvents implements MouseListener {

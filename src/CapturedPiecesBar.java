@@ -13,7 +13,6 @@ public class CapturedPiecesBar extends JPanel {
 
     private final Piece.Faction displayedFaction;
     private final int imageSize;
-    private final boolean borderOnBottom;
 
     private int capturedPawns = 0;
     private int capturedRooks = 0;
@@ -27,9 +26,8 @@ public class CapturedPiecesBar extends JPanel {
     private final Image knightImage;
     private final Image queenImage;
 
-    public CapturedPiecesBar(Piece.Faction displayedFaction, int width, int height, boolean borderOnBottom) {
+    public CapturedPiecesBar(Piece.Faction displayedFaction, int width, int height) {
         this.displayedFaction = displayedFaction;
-        this.borderOnBottom = borderOnBottom;
 
         this.setPreferredSize(new Dimension(width, height));
         setBarSize(width, height);
@@ -74,6 +72,16 @@ public class CapturedPiecesBar extends JPanel {
         repaint();
     }
 
+    public void reset() {
+        capturedPawns = 0;
+        capturedRooks = 0;
+        capturedBishops = 0;
+        capturedKnights = 0;
+        capturedQueens = 0;
+
+        repaint();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -85,12 +93,8 @@ public class CapturedPiecesBar extends JPanel {
         drawPieces(g2);
 
         g2.setColor(BORDER_COLOR);
-        if (borderOnBottom) {
-            g2.fillRect(0, getHeight()-BORDER_THICKNESS, getWidth(), BORDER_THICKNESS);
-        }
-        else {
-            g2.fillRect(0, 0, getWidth(), BORDER_THICKNESS);
-        }
+        g2.fillRect(0, getHeight()-BORDER_THICKNESS, getWidth(), BORDER_THICKNESS);
+        g2.fillRect(0, 0, getWidth(), BORDER_THICKNESS);
     }
 
     private int drawPieceRow(Graphics2D g2, Image img, int count, int drawX) {

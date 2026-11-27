@@ -36,8 +36,8 @@ public class Main {
         JPanel columnPanel = new JPanel();
         columnPanel.setLayout(new BoxLayout(columnPanel, BoxLayout.Y_AXIS));
 
-        blackPieceBar = new CapturedPiecesBar(Piece.Faction.WHITE, BOARD_START_WIDTH, BAR_HEIGHT, true);
-        whitePieceBar = new CapturedPiecesBar(Piece.Faction.BLACK, BOARD_START_WIDTH, BAR_HEIGHT, false);
+        blackPieceBar = new CapturedPiecesBar(Piece.Faction.WHITE, BOARD_START_WIDTH, BAR_HEIGHT);
+        whitePieceBar = new CapturedPiecesBar(Piece.Faction.BLACK, BOARD_START_WIDTH, BAR_HEIGHT);
         board = new Board(BOARD_START_WIDTH, blackPieceBar, whitePieceBar);
         board.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -63,12 +63,24 @@ public class Main {
             statusLabel.setText(newText);
         });
 
+        board.setOnWinEvent(winner -> {
+            String newText = switch (winner) {
+                case WHITE -> "White Wins!";
+                case BLACK -> "Black Wins!";
+                case null -> "Stalemate";
+            };
+            statusLabel.setText(newText);
+        });
+
         JButton restartButton = new JButton("Restart");
         restartButton.setFont(restartButton.getFont().deriveFont(18f));
         restartButton.addActionListener(e -> {
-            int response = JOptionPane.showConfirmDialog(controlsPanel, "Are you sure you want to reset?", "Confirm Reset", JOptionPane.YES_NO_OPTION);
+            int response = JOptionPane.showConfirmDialog(controlsPanel, "Are you sure you want to restart?", "Confirm Restart", JOptionPane.YES_NO_OPTION);
             if (response == JOptionPane.YES_OPTION) {
                 board.reset();
+                whitePieceBar.reset();
+                blackPieceBar.reset();
+                statusLabel.setText("White to move");
             }
         });
         controlsPanel.add(restartButton, BorderLayout.EAST);
