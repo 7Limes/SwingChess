@@ -10,6 +10,8 @@ public class Board extends JPanel {
     private static final Color BOARD_COLOR_2 = new Color(200, 200, 200);
     private static final Color CAN_MOVE_COLOR = new Color(150, 225, 255, 128);
 
+    private Runnable onMoveEvent;  // Event that external sources can hook into
+
     private int size, cellSize;
     private final CapturedPiecesBar whitePieceBar, blackPieceBar;
 
@@ -47,6 +49,8 @@ public class Board extends JPanel {
         }
 
         turn = Piece.Faction.WHITE;
+
+        repaint();
     }
 
     public boolean isOutOfBounds(int x, int y) {
@@ -63,6 +67,11 @@ public class Board extends JPanel {
         return getCell(pos.x, pos.y);
     }
 
+    /** Returns the faction whose turn it is */
+    public Piece.Faction getTurn() {
+        return turn;
+    }
+
     public void resize(int newSize) {
         // Snap to a multiple of 8 so the cells exactly fill the panel
         newSize -= newSize % 8;
@@ -71,7 +80,13 @@ public class Board extends JPanel {
         this.setMaximumSize(newDim);
         this.size = newSize;
         this.cellSize = size / 8;
+        // Changing preferred/max size doesn't trigger a layout pass on its own
+        revalidate();
         repaint();
+    }
+
+    public void setOnMoveEvent(Runnable func) {
+        this.onMoveEvent = func;
     }
 
     /** Places rook, knight, bishop, queen, king, bishop, knight, rook across a row. */
@@ -230,9 +245,9 @@ public class Board extends JPanel {
     /** Tries to move the currently selected piece to the given position.
      *  Returns false if the move is not possible.
      *  */
-    private boolean tryMakeMove(int x, int y) {
+    private void tryMakeMove(int x, int y) {
         if (!isPossibleMove(x, y)) {
-            return false;
+            return;
         }
 
         cells[selectedPiecePos.y][selectedPiecePos.x] = null;
@@ -251,7 +266,8 @@ public class Board extends JPanel {
         // Swap turns
         turn = turn == Piece.Faction.WHITE ? Piece.Faction.BLACK : Piece.Faction.WHITE;
 
-        return true;
+        // Run external event
+        if (onMoveEvent != null) onMoveEvent.run();
     }
 
     class MouseEvents implements MouseListener {

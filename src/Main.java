@@ -13,19 +13,20 @@ public class Main {
     private static CapturedPiecesBar whitePieceBar;
     private static Board board;
 
-    private static JLabel statusLabel;
-    private static JButton restartButton;
-
     public static void main(String[] args) {
         JFrame mainFrame = new JFrame("Chess");
         mainFrame.setSize(BOARD_START_WIDTH, BOARD_START_WIDTH+BAR_HEIGHT*2);
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        mainFrame.addComponentListener(new ResizeListener());
 
         JPanel columnPanel = createColumnPanel();
         columnPanel.setBackground(BG_COLOR);
+        columnPanel.addComponentListener(new ResizeListener());
 
-        mainFrame.add(columnPanel);
+        JPanel rootPanel = new JPanel(new BorderLayout());
+        rootPanel.add(createControlsPanel(), BorderLayout.NORTH);
+        rootPanel.add(columnPanel, BorderLayout.CENTER);
+
+        mainFrame.add(rootPanel);
         mainFrame.pack();
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
@@ -34,9 +35,6 @@ public class Main {
     private static JPanel createColumnPanel() {
         JPanel columnPanel = new JPanel();
         columnPanel.setLayout(new BoxLayout(columnPanel, BoxLayout.Y_AXIS));
-
-        JPanel controlsPanel = createControlsPanel();
-        columnPanel.add(controlsPanel);
 
         blackPieceBar = new CapturedPiecesBar(Piece.Faction.WHITE, BOARD_START_WIDTH, BAR_HEIGHT, true);
         whitePieceBar = new CapturedPiecesBar(Piece.Faction.BLACK, BOARD_START_WIDTH, BAR_HEIGHT, false);
@@ -56,17 +54,24 @@ public class Main {
         controlsPanel.setBackground(BG_COLOR);
         controlsPanel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
 
-        statusLabel = new JLabel("White to Move");
+        JLabel statusLabel = new JLabel("White to move");
         statusLabel.setForeground(Color.WHITE);
         statusLabel.setFont(statusLabel.getFont().deriveFont(18f));
         controlsPanel.add(statusLabel, BorderLayout.WEST);
+        board.setOnMoveEvent(() -> {
+            String newText = board.getTurn() == Piece.Faction.WHITE ? "White to move" : "Black to move";
+            statusLabel.setText(newText);
+        });
 
-        restartButton = new JButton("Restart");
+        JButton restartButton = new JButton("Restart");
         restartButton.setFont(restartButton.getFont().deriveFont(18f));
+        restartButton.addActionListener(e -> {
+            int response = JOptionPane.showConfirmDialog(controlsPanel, "Are you sure you want to reset?", "Confirm Reset", JOptionPane.YES_NO_OPTION);
+            if (response == JOptionPane.YES_OPTION) {
+                board.reset();
+            }
+        });
         controlsPanel.add(restartButton, BorderLayout.EAST);
-
-        // Stop the vertical BoxLayout in columnPanel from stretching this panel taller
-        controlsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, controlsPanel.getPreferredSize().height));
 
         return controlsPanel;
     }
@@ -74,12 +79,12 @@ public class Main {
     static class ResizeListener implements ComponentListener {
         @Override
         public void componentResized(ComponentEvent componentEvent) {
-            JFrame frame = (JFrame) componentEvent.getComponent();
-            Dimension newSize = frame.getContentPane().getSize();
-            int newBoardSize = Math.min(newSize.width, newSize.height-2*BAR_HEIGHT);
+            Dimension newSize = componentEvent.getComponent().getSize();
+            int availableHeight = newSize.height - 2*BAR_HEIGHT;
+            int newBoardSize = Math.max(0, Math.min(newSize.width, availableHeight));
             board.resize(newBoardSize);
-            blackPieceBar.resize(newSize.width, BAR_HEIGHT);
-            whitePieceBar.resize(newSize.width, BAR_HEIGHT);
+            blackPieceBar.setBarSize(newSize.width, BAR_HEIGHT);
+            whitePieceBar.setBarSize(newSize.width, BAR_HEIGHT);
         }
 
         @Override

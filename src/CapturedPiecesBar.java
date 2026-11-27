@@ -6,6 +6,8 @@ import java.awt.*;
  */
 public class CapturedPiecesBar extends JPanel {
     private static final Color BG_COLOR = new Color(70, 70, 70);
+    private static final Color BORDER_COLOR = new Color(45, 45, 45);
+
     private static final int PADDING = 5;
     private static final int BORDER_THICKNESS = 3;
 
@@ -30,7 +32,7 @@ public class CapturedPiecesBar extends JPanel {
         this.borderOnBottom = borderOnBottom;
 
         this.setPreferredSize(new Dimension(width, height));
-        resize(width, height);
+        setBarSize(width, height);
 
         this.imageSize = height - 2*PADDING;
 
@@ -63,10 +65,12 @@ public class CapturedPiecesBar extends JPanel {
         repaint();
     }
 
-    public void resize(int newWidth, int newHeight) {
+    public void setBarSize(int newWidth, int newHeight) {
         Dimension newSize = new Dimension(newWidth, newHeight);
         this.setPreferredSize(newSize);
         this.setMaximumSize(newSize);
+        // Changing preferred/max size doesn't trigger a layout pass on its own
+        revalidate();
         repaint();
     }
 
@@ -80,7 +84,7 @@ public class CapturedPiecesBar extends JPanel {
 
         drawPieces(g2);
 
-        g2.setColor(Color.BLACK);
+        g2.setColor(BORDER_COLOR);
         if (borderOnBottom) {
             g2.fillRect(0, getHeight()-BORDER_THICKNESS, getWidth(), BORDER_THICKNESS);
         }
