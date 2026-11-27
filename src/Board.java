@@ -1,5 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.HashSet;
@@ -9,6 +11,8 @@ public class Board extends JPanel {
     private static final Color BOARD_COLOR_1 = new Color(225, 225, 225);
     private static final Color BOARD_COLOR_2 = new Color(200, 200, 200);
     private static final Color CAN_MOVE_COLOR = new Color(150, 225, 255, 128);
+
+    private static final double PIECE_ANIM_DURATION = 0.25;
 
     private Runnable onMoveEvent;  // Event that external sources can hook into
 
@@ -21,6 +25,12 @@ public class Board extends JPanel {
     private Position selectedPiecePos = null;
 
     private Piece.Faction turn = Piece.Faction.WHITE;
+
+    private final Timer animTimer = new Timer(16, new PieceMoveAnimator());
+    private boolean isAnimating = false;
+    private long animStartTime = 0;
+    private Position animStartPos, animEndPos;
+    private Piece animPiece;  // The piece being animated
 
     public Board(int size, CapturedPiecesBar whitePieceBar, CapturedPiecesBar blackPieceBar) {
         resize(size);
@@ -35,6 +45,8 @@ public class Board extends JPanel {
 
     /** Resets the board to its starting state. */
     public void reset() {
+        stopAnimation();
+
         // Clear everything first so reset() also works mid-game
         for (Piece[] row : cells) {
             java.util.Arrays.fill(row, null);
@@ -113,6 +125,9 @@ public class Board extends JPanel {
         }
 
         drawPieces(g2);
+
+        // Flush the graphics pipeline to prevent stuttering
+        Toolkit.getDefaultToolkit().sync();
     }
 
     private void drawCheckerboard(Graphics2D g2) {
@@ -139,17 +154,41 @@ public class Board extends JPanel {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 Piece p = cells[i][j];
-                if (p != null) {
-                    p.draw(
-                            g2,
-                            j*cellSize,
-                            i*cellSize,
-                            cellSize,
-                            this
-                    );
-                }
+                if (p == null || (isAnimating && p == animPiece)) continue;
+                p.draw(g2, j * cellSize, i * cellSize, cellSize, this);
             }
         }
+
+        // Draw the moving piece last so it slides over the other pieces
+        if (isAnimating) {
+            drawAnimatedPiece(g2);
+        }
+    }
+
+    /** Draws the animating piece at its current interpolated position, based on elapsed time. */
+    private void drawAnimatedPiece(Graphics2D g2) {
+        double elapsed = (System.nanoTime() - animStartTime) / 1e9;
+        double t = Math.min(1.0, elapsed / PIECE_ANIM_DURATION);
+        double easedT = easeInOutCubic(t);
+
+        double px = lerp(animStartPos.x * cellSize, animEndPos.x * cellSize, easedT);
+        double py = lerp(animStartPos.y * cellSize, animEndPos.y * cellSize, easedT);
+
+        animPiece.draw(g2, (int) Math.round(px), (int) Math.round(py), cellSize, this);
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + t * (b - a);
+    }
+
+    private static double easeInOutCubic(double x) {
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }
+
+    private void stopAnimation() {
+        animTimer.stop();
+        isAnimating = false;
+        animPiece = null;
     }
 
     /** Returns true if any piece of `byFaction` attacks the given position. */
@@ -259,6 +298,14 @@ public class Board extends JPanel {
         whitePieceBar.tryAddCapturedPiece(capturedPiece);
         blackPieceBar.tryAddCapturedPiece(capturedPiece);
 
+        // Setup animation
+        animPiece = selectedPiece;
+        animStartPos = selectedPiecePos;
+        animEndPos = new Position(x, y);
+        animStartTime = System.nanoTime();
+        isAnimating = true;
+        animTimer.start();
+
         selectedPiece = null;
         selectedPiecePos = null;
         repaint();
@@ -279,16 +326,20 @@ public class Board extends JPanel {
 
         @Override
         public void mousePressed(MouseEvent mouseEvent) {
-            int cellX = mouseEvent.getX() / cellSize;
-            int cellY = mouseEvent.getY() / cellSize;
-            trySelectPiece(cellX, cellY);
+            if (!isAnimating) {
+                int cellX = mouseEvent.getX() / cellSize;
+                int cellY = mouseEvent.getY() / cellSize;
+                trySelectPiece(cellX, cellY);
+            }
         }
 
         @Override
         public void mouseReleased(MouseEvent mouseEvent) {
-            int cellX = mouseEvent.getX() / cellSize;
-            int cellY = mouseEvent.getY() / cellSize;
-            tryMakeMove(cellX, cellY);
+            if (!isAnimating) {
+                int cellX = mouseEvent.getX() / cellSize;
+                int cellY = mouseEvent.getY() / cellSize;
+                tryMakeMove(cellX, cellY);
+            }
         }
 
         @Override
@@ -299,6 +350,18 @@ public class Board extends JPanel {
         @Override
         public void mouseExited(MouseEvent mouseEvent) {
 
+        }
+    }
+
+    class PieceMoveAnimator implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            double elapsed = (System.nanoTime() - animStartTime) / 1e9;
+            if (elapsed >= PIECE_ANIM_DURATION) {
+                stopAnimation();
+            }
+
+            repaint();
         }
     }
 }
